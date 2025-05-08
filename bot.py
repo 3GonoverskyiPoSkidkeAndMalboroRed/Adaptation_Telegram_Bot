@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Состояния диалога
-START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO = range(10)
+START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_SETUP, CHANNELS_INFO = range(12)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Начало диалога и отправка первого сообщения."""
@@ -166,7 +166,7 @@ def handle_company_info(update: Update, context: CallbackContext) -> int:
             "О чём расскажем?"
         )
         
-        reply_keyboard = [['Рабочее время', 'Отпуска и больничные'], ['Как подать заявку', 'Всё сразу']]
+        reply_keyboard = [['Рабочее время', 'Отпуска и больничные'], ['Как подать заявку', 'Пропустить']]
         update.message.reply_text(
             "Выберите интересующий вас раздел:",
             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
@@ -207,7 +207,14 @@ def handle_regulations_info(update: Update, context: CallbackContext) -> int:
             "обращайся к нашему офис-менеджеру Екатерине.\n"
             "Telegram для связи: {телеграм офис менеджера}\n"
             "Вот твой персональный план на первые 2 недели:\n"
-            "✅ День 1: знакомство с командой, установка всех инструментов, первая встреча с ментором и корректировка плана адаптации."
+            "✅\n"
+            "📅 День 1:\n"
+            "1) Знакомство с командой\n"
+            "2) Установка всех инструментов\n"
+            "3) Первая встреча с ментором и корректировка плана адаптации\n"
+            "📅 День 2\n"
+            "📅 День 3\n"
+            "…"
         )
         
         # Запрос на получение напоминаний
@@ -219,23 +226,8 @@ def handle_regulations_info(update: Update, context: CallbackContext) -> int:
         
         return FEEDBACK  # Переход к обработке обратной связи
 
-    elif choice == 'Назад':
-        # Возврат к выбору информации о компании
-        reply_keyboard = [['История', 'Клиенты'], ['Команда', 'Пропустить']]
-        update.message.reply_text(
-            "Хочешь узнать:\n"
-            "1. Историю компании\n"
-            "2. Кто наши клиенты\n"
-            "3. Команду\n"
-            "4. Пропустить",
-            reply_markup=ReplyKeyboardMarkup(
-                reply_keyboard, one_time_keyboard=True, resize_keyboard=True
-            ),
-        )
-        return COMPANY_INFO
-
     # После показа информации предлагаем вернуться к выбору темы
-    reply_keyboard = [['Рабочее время', 'Отпуска и больничные'], ['Как подать заявку', 'Пропустить'], ['Назад']]
+    reply_keyboard = [['Рабочее время', 'Отпуска и больничные'], ['Как подать заявку', 'Пропустить']]
     update.message.reply_text(
         "Что еще тебя интересует по регламентам?",
         reply_markup=ReplyKeyboardMarkup(
@@ -523,49 +515,101 @@ def handle_extra_info(update: Update, context: CallbackContext) -> int:
     )
     return EXTRA_INFO
 
-def finish_onboarding(update: Update, context: CallbackContext) -> int:
-    """Завершение адаптационного процесса."""
-    update.message.reply_text(
-        "Спасибо за прохождение адаптационного процесса! Надеемся, эта информация "
-        "была полезной для тебя."
-    )
-    
-    # Запрос обратной связи
-    reply_keyboard = [['Да'], ['Нет']]
-    update.message.reply_text(
-        "Хочешь оставить обратную связь о боте?",
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, resize_keyboard=True
-        ),
-    )
-    
-    return FEEDBACK
-
 def handle_feedback(update: Update, context: CallbackContext) -> int:
     """Обработка обратной связи."""
     choice = update.message.text
     
     if choice == 'Да':
+        # Переход к следующему шагу, где отправляются ссылки на каналы
         update.message.reply_text(
-            "Пожалуйста, напиши свои впечатления о боте и предложения по улучшению:"
+            "Вот список наших каналов:\n"
+            "Канал 1 - https://t.me/channel1\n"
+            "Канал 2 - https://t.me/channel2\n"
+            "Канал 3 - https://t.me/channel3",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
+                                             one_time_keyboard=True,
+                                             resize_keyboard=True)
         )
-        return FEEDBACK
+        return CHANNELS_INFO  # Переход к следующему состоянию
+
     else:  # 'Нет'
         update.message.reply_text(
-            "Хорошо! Если у тебя возникнут вопросы в будущем, не стесняйся "
-            "обращаться к своему руководителю или в HR-отдел."
-        )
-        
-        # Завершение диалога
-        update.message.reply_text(
-            "Желаем успехов в работе! Если захочешь снова пообщаться с ботом, "
-            "просто напиши /start",
-            reply_markup=ReplyKeyboardMarkup([['Перезапустить бота']], 
+            "Хорошо, двигаемся дальше!",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
                                              one_time_keyboard=True,
                                              resize_keyboard=True)
         )
         
-        return ConversationHandler.END
+        return ConversationHandler.END  # Завершение диалога
+
+def handle_channels_info(update: Update, context: CallbackContext) -> int:
+    """Обработка ответа на вопрос о списке каналов."""
+    choice = update.message.text
+    
+    if choice == 'Да':
+        update.message.reply_text(
+            "Вот список наших каналов:\n"
+            "Канал 1 - https://t.me/channel1\n"
+            "Канал 2 - https://t.me/channel2\n"
+            "Канал 3 - https://t.me/channel3",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
+                                          one_time_keyboard=True,
+                                          resize_keyboard=True)
+        )
+    else:  # 'Нет'
+        update.message.reply_text(
+            "Хорошо, двигаемся дальше!",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
+                                          one_time_keyboard=True,
+                                          resize_keyboard=True)
+        )
+    
+    return ConversationHandler.END
+
+def handle_tools_setup(update: Update, context: CallbackContext) -> int:
+    """Обработка выбора настройки инструментов."""
+    choice = update.message.text
+    
+    if choice == 'Да, Нужна':
+        # Инструкции по инструментам
+        update.message.reply_text(
+            "Инструкция по Telegram\n"
+            "Для входа в рабочие чаты перейди по ссылке [ссылка], чтобы добавить папку HL2B на свой аккаунт.\n"
+            "❗ВАЖНО❗\n"
+            "Зайди на свой рабочий Telegram аккаунт. Если у тебя еще нет рабочего аккаунта, обратись за помощью к [имя/контакт].\n\n"
+            
+            "Инструкция по Notion\n"
+            "Чтобы войти в базу знаний, перейди по ссылке: [ссылка].\n"
+            "Здесь ты найдешь всю актуальную информацию.\n\n"
+            
+            "Инструкция по Google Drive\n"
+            "Чтобы перейти к рабочим файлам, перейди по ссылке [ссылка].\n\n"
+            
+            "Инструкция по Bitrix24\n"
+            "Чтобы войти в Bitrix24, напиши Сергею, чтобы он выдал тебе рабочую почту для входа в аккаунт.\n"
+            "Telegram Сергея: {ссылка на тг Сергея}."
+        )
+    
+    else:  # 'Нет, уже настроил'
+        update.message.reply_text(
+            "Отлично! Нажми 'Далее', чтобы продолжить."
+        )
+    
+    # Завершение диалога
+    update.message.reply_text(
+        "Коммуникации в команде\n"
+        "У нас ценится открытость и инициатива.\n"
+        "В папке Telegram HL2b:\n"
+        "#daily — делимся планами на день\n"
+        "#random — свободные темы\n"
+        "#project — каналы по проектам\n"
+        "Хочешь список всех каналов с описанием?",
+        reply_markup=ReplyKeyboardMarkup([['Да', 'Нет']], 
+                                         one_time_keyboard=True,
+                                         resize_keyboard=True)
+    )
+    
+    return CHANNELS_INFO  # Переход к обработке информации о каналах
 
 def restart(update: Update, context: CallbackContext) -> int:
     """Перезапуск бота."""
@@ -590,15 +634,10 @@ def main() -> None:
         states={
             START: [MessageHandler(Filters.regex('^(Да, поехали|Хочу позже)$'), handle_start_choice)],
             COMPANY_INFO: [MessageHandler(Filters.regex('^(История|Клиенты|Команда|Пропустить|Назад)$'), handle_company_info)],
-            REGULATIONS_INFO: [MessageHandler(Filters.regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Пропустить|Назад)$'), handle_regulations_info)],
-            ONBOARDING_INFO: [MessageHandler(Filters.regex('^(Офис|Работа|Финансы|Проекты|Доп.информация|Назад)$'), handle_onboarding_info)],
-            OFFICE_INFO: [MessageHandler(Filters.regex('^(Рабочее место|Доступы|Корпоративные мероприятия|Назад)$'), handle_office_info)],
-            WORK_INFO: [MessageHandler(Filters.regex('^(График работы|Больничный|Отпуск|Назад)$'), handle_work_info)],
-            FINANCE_INFO: [MessageHandler(Filters.regex('^(Зарплата|Авансы|Премии|Назад)$'), handle_finance_info)],
-            PROJECT_INFO: [MessageHandler(Filters.regex('^(Текущие проекты|Будущие разработки|Назад)$'), handle_project_info)],
-            EXTRA_INFO: [MessageHandler(Filters.regex('^(Обучение|Карьерный рост|Бонусы|Корпоративная культура|Назад)$'), handle_extra_info)],
-            FEEDBACK: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_feedback), 
-                      MessageHandler(Filters.text & ~Filters.command, finish_onboarding)],
+            REGULATIONS_INFO: [MessageHandler(Filters.regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Пропустить)$'), handle_regulations_info)],
+            FEEDBACK: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_feedback)],
+            TOOLS_SETUP: [MessageHandler(Filters.regex('^(Да, Нужна|Нет, уже настроил)$'), handle_tools_setup)],
+            CHANNELS_INFO: [MessageHandler(Filters.regex('^(Далее)$'), handle_channels_info)],
         },
         fallbacks=[CommandHandler('start', start)],
     )
