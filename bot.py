@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Состояния диалога
-START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_INFO, TOOLS_SETUP, CHANNELS_INFO, FEEDBACK_SUPPORT, CULTURE_INFO, GAMIFICATION, CULTURE_LIFE, LINKS_INFO = range(18)
+START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_INFO, TOOLS_SETUP, CHANNELS_INFO, FEEDBACK_SUPPORT, CULTURE_INFO, GAMIFICATION, CULTURE_LIFE, LINKS_INFO, QUIZ = range(19)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Начало диалога и отправка первого сообщения."""
@@ -327,9 +327,123 @@ def handle_step_nine(update: Update, context: CallbackContext) -> int:
         "Хочешь узнать, когда следующее мероприятие?"
     )
     
-    # Здесь можно добавить логику для обработки ответа на вопрос о мероприятии
+    # Добавление кнопок "Да" и "Нет"
+    reply_keyboard = [['Да', 'Нет']]
+    update.message.reply_text(
+        "Хотите узнать о следующем мероприятии?",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    )
     
-    return ConversationHandler.END  # Завершение диалога или переход к следующему шагу
+    return GAMIFICATION  # Завершение диалога или переход к следующему шагу
+    
+  
+
+def handle_gamification_response(update: Update, context: CallbackContext) -> int:
+    """Обработка ответа на вопрос о мероприятии."""
+    choice = update.message.text
+    
+    if choice == 'Да':
+        update.message.reply_text(
+            "А ближайший месяц запланированных мероприятий нет."
+        )
+    elif choice == 'Нет':
+        update.message.reply_text(
+            "Хорошо, двигаемся дальше."
+        )
+    
+    # Добавление кнопки "Далее"
+
+    
+    return handle_step_ten(update, context)
+
+
+def handle_step_ten(update: Update, context: CallbackContext) -> int:
+    """Обработка шага 10.  Геймификация."""
+    update.message.reply_text(
+        "Шаг 10. Геймификация"
+        " Готов проверить, насколько ты освоился? \n"
+        "Жми 'Начать квиз', чтобы пройти \n"
+        "короткий тест и закрепить свои \n"
+        "знания по адаптации"
+    )
+    
+    return handle_quiz(update, context)
+    
+
+def handle_quiz(update: Update, context: CallbackContext) -> int:
+    """Обработка квиза с вопросами."""
+    questions = [
+        {
+            "question": "Вопрос 1: Какой язык программирования используется для разработки Telegram-ботов?",
+            "options": ["Python", "Java", "C++", "Ruby"],
+            "correct": 0  # Индекс правильного ответа (0-based)
+        },
+        {
+            "question": "Вопрос 2: Какой метод используется для отправки сообщений в Telegram?",
+            "options": ["sendMessage", "postMessage", "sendText", "sendUpdate"],
+            "correct": 0
+        },
+        {
+            "question": "Вопрос 3: Какой библиотекой можно управлять Telegram-ботами на Python?",
+            "options": ["python-telegram-bot", "telegram-api", "telebot", "pyTelegram"],
+            "correct": 0
+        },
+        {
+            "question": "Вопрос 4: Какой метод используется для получения обновлений от Telegram?",
+            "options": ["getUpdates", "fetchUpdates", "retrieveUpdates", "updateMessages"],
+            "correct": 0
+        },
+        {
+            "question": "Вопрос 5: Какой формат данных используется для передачи сообщений в Telegram?",
+            "options": ["JSON", "XML", "YAML", "CSV"],
+            "correct": 0
+        }
+    ]
+    
+    # Сохраняем вопросы в контексте для последующей обработки
+    context.user_data['quiz'] = questions
+    context.user_data['current_question'] = 0
+    
+    return ask_question(update, context)  # Переход к первой функции вопроса
+
+def ask_question(update: Update, context: CallbackContext) -> int:
+    """Задает текущий вопрос из квиза."""
+    questions = context.user_data['quiz']
+    current_question = context.user_data['current_question']
+    
+    if current_question < len(questions):
+        question = questions[current_question]
+        reply_keyboard = [[option for option in question["options"]]]
+        
+        update.message.reply_text(
+            question["question"],
+            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        )
+        
+        return QUIZ  # Переход к состоянию квиза
+    
+    else:
+        update.message.reply_text("Квиз завершен! Спасибо за участие.")
+        return ConversationHandler.END  # Завершение диалога
+
+def handle_quiz_response(update: Update, context: CallbackContext) -> int:
+    """Обработка ответа на вопрос квиза."""
+    questions = context.user_data['quiz']
+    current_question = context.user_data['current_question']
+    
+    if current_question < len(questions):
+        question = questions[current_question]
+        answer = update.message.text
+        
+        if answer == question["options"][question["correct"]]:
+            context.user_data['current_question'] += 1  # Переход к следующему вопросу
+            return ask_question(update, context)  # Задаем следующий вопрос
+        else:
+            update.message.reply_text("Несовсем. Попробуй еще раз.")
+            return ask_question(update, context)  # Возвращаем к текущему вопросу
+    
+    return ConversationHandler.END  # Завершение диалога
+
 
 def restart(update: Update, context: CallbackContext) -> int:
     """Перезапуск бота."""
@@ -359,6 +473,8 @@ def main() -> None:
             TOOLS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'),handle_tools_response )],  # Обработка ответа на вопрос о ссылках
             LINKS_INFO: [MessageHandler(Filters.regex('^.*$'),handle_links_response )],  # Обработка шага 7
             CULTURE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_culture_info)],  # Обработка шага 9
+            GAMIFICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_gamification_response)],  # Обработка шага 10
+            QUIZ: [MessageHandler(Filters.regex('^.*$'), handle_quiz_response)],  # Обработка ответа на вопрос квиза
         },
         fallbacks=[CommandHandler('start', start)],
     )
