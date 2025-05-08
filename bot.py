@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Состояния диалога
-START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_SETUP, CHANNELS_INFO = range(12)
+START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_SETUP, CHANNELS_INFO, FEEDBACK_SUPPORT, CULTURE_INFO, GAMIFICATION, CULTURE_LIFE = range(16)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Начало диалога и отправка первого сообщения."""
@@ -571,7 +571,67 @@ def handle_channels_info(update: Update, context: CallbackContext) -> int:
                                           resize_keyboard=True)
         )
     
-    return ConversationHandler.END  # Завершение диалога
+    return FEEDBACK_SUPPORT  # Переход к следующему шагу "Обратная связь и поддержка"
+
+def handle_feedback_support(update: Update, context: CallbackContext) -> int:
+    """Обработка обратной связи и поддержки."""
+    update.message.reply_text(
+        "Обратная связь и поддержка\n"
+        "Чувствуешь, что что-то непонятно? Не беда — вот куда можно обратиться:\n"
+        "Тимлил Ирина — {tg тимлида}\n"
+        "Твой руководитель Павел — {tg руководителя}"
+    )
+    
+    # Добавление кнопки "Далее" для перехода к следующему шагу
+    reply_keyboard = [['Далее']]
+    update.message.reply_text(
+        "Нажмите 'Далее', чтобы узнать о культуре и внерабочей жизни.",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    )
+    
+    return CULTURE_LIFE  # Переход к следующему шагу
+
+def handle_culture_life(update: Update, context: CallbackContext) -> int:
+    """Обработка информации о культуре и внерабочей жизни."""
+    update.message.reply_text(
+        "🔥 У нас не только работа, но и жизнь!\n"
+        "Каждый месяц — пицца-пятница 🍕\n"
+        "Каждую среду — утренний кофе с командой ☕\n"
+        "Раз в квартал — тимбилдинг (квесты, выезды, спорт)\n"
+        "Хочешь узнать, когда следующее мероприятие?"
+    )
+    
+    # Добавьте кнопки для дальнейшего выбора
+    reply_keyboard = [['Да', 'Нет']]
+    update.message.reply_text(
+        "Выберите вариант:",
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    )
+    
+    return CULTURE_INFO  # Переход к следующему шагу
+
+def handle_culture_info(update: Update, context: CallbackContext) -> int:
+    """Обработка выбора информации о культуре и внерабочей жизни."""
+    choice = update.message.text
+    
+    if choice == 'Да':
+        update.message.reply_text(
+            "На ближайший месяц запланированных мероприятий нет.",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
+                                             one_time_keyboard=True,
+                                             resize_keyboard=True)
+        )
+        return GAMIFICATION  # Переход к следующему шагу "Геймификация"
+    
+    else:  # 'Нет'
+        update.message.reply_text(
+            "Хорошо, двигаемся дальше!",
+            reply_markup=ReplyKeyboardMarkup([['Далее']], 
+                                             one_time_keyboard=True,
+                                             resize_keyboard=True)
+        )
+        
+        return GAMIFICATION  # Переход к следующему шагу "Геймификация"
 
 def handle_tools_setup(update: Update, context: CallbackContext) -> int:
     """Обработка выбора настройки инструментов."""
@@ -645,6 +705,8 @@ def main() -> None:
             FEEDBACK: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_feedback)],
             TOOLS_SETUP: [MessageHandler(Filters.regex('^(Да, Нужна|Нет, уже настроил)$'), handle_tools_setup)],
             CHANNELS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_channels_info)],
+            FEEDBACK_SUPPORT: [MessageHandler(Filters.regex('^Далее$'), handle_feedback_support)],
+            CULTURE_LIFE: [MessageHandler(Filters.regex('^Далее$'), handle_culture_life)],  # Новое состояние
         },
         fallbacks=[CommandHandler('start', start)],
     )
