@@ -520,17 +520,24 @@ def handle_feedback(update: Update, context: CallbackContext) -> int:
     choice = update.message.text
     
     if choice == 'Да':
-        # Переход к следующему шагу, где отправляются ссылки на каналы
         update.message.reply_text(
-            "Вот список наших каналов:\n"
-            "Канал 1 - https://t.me/channel1\n"
-            "Канал 2 - https://t.me/channel2\n"
-            "Канал 3 - https://t.me/channel3",
-            reply_markup=ReplyKeyboardMarkup([['Далее']], 
-                                             one_time_keyboard=True,
-                                             resize_keyboard=True)
+            "Коммуникации в команде\n"
+            "У нас ценится открытость и инициатива.\n"
+            "В папке Telegram HL2b:\n"
+            "#daily — делимся планами на день\n"
+            "#random — свободные темы\n"
+            "#project — каналы по проектам\n"
+            "Хочешь список всех каналов с описанием?"
         )
-        return CHANNELS_INFO  # Переход к следующему состоянию
+        
+        # Кнопки для выбора
+        reply_keyboard = [['Да', 'Нет']]
+        update.message.reply_text(
+            "Выберите вариант:",
+            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+        )
+        
+        return CHANNELS_INFO  # Переход к следующему шагу, например, к обработке информации о каналах
 
     else:  # 'Нет'
         update.message.reply_text(
@@ -540,7 +547,7 @@ def handle_feedback(update: Update, context: CallbackContext) -> int:
                                              resize_keyboard=True)
         )
         
-        return ConversationHandler.END  # Завершение диалога
+        return ConversationHandler.END  # Завершение диалога, если выбрано "Нет"
 
 def handle_channels_info(update: Update, context: CallbackContext) -> int:
     """Обработка ответа на вопрос о списке каналов."""
@@ -564,7 +571,7 @@ def handle_channels_info(update: Update, context: CallbackContext) -> int:
                                           resize_keyboard=True)
         )
     
-    return ConversationHandler.END
+    return ConversationHandler.END  # Завершение диалога
 
 def handle_tools_setup(update: Update, context: CallbackContext) -> int:
     """Обработка выбора настройки инструментов."""
@@ -637,7 +644,7 @@ def main() -> None:
             REGULATIONS_INFO: [MessageHandler(Filters.regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Пропустить)$'), handle_regulations_info)],
             FEEDBACK: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_feedback)],
             TOOLS_SETUP: [MessageHandler(Filters.regex('^(Да, Нужна|Нет, уже настроил)$'), handle_tools_setup)],
-            CHANNELS_INFO: [MessageHandler(Filters.regex('^(Далее)$'), handle_channels_info)],
+            CHANNELS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_channels_info)],
         },
         fallbacks=[CommandHandler('start', start)],
     )
