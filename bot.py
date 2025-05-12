@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext, ConversationHandler, Application
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -142,7 +142,11 @@ def handle_company_info(update: Update, context: CallbackContext) -> int:
     # Возврат к выбору информации о компании
     reply_keyboard = [['История', 'Клиенты'], ['Команда', 'Далее']]
     update.message.reply_text(
-        "Выберите интересующий вас раздел:",
+        "Хочешь узнать:\n"
+        "1. Историю компании\n"
+        "2. Кто наши клиенты\n"
+        "3. Команду\n"
+        "4. Далее",
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard=True, resize_keyboard=True
         ),
@@ -296,37 +300,17 @@ def handle_step_seven(update: Update, context: CallbackContext) -> int:
         "Шаг 7. Обратная связь и поддержка: \n"
         "Чувствуешь, что что-то непонятно? Не беда — вот куда можно обратиться: \n"
         "Тимлил Ирина — {tg тимлида} \n"
-        "Твой руководитель Павел  — {tg руководителя}\n"
-        "Если у тебя есть сообщение, которое ты хочешь отправить, напиши его ниже."
+        "Твой руководитель Павел  — {tg руководителя}"
     )
     
-    # Сохраняем состояние для ожидания сообщения
-    context.user_data['waiting_for_feedback'] = True
-    
-    # Добавление кнопки "Далее"
+    # Добавление кнопки "Далее" для перехода на шаг 9
     reply_keyboard = [['Далее']]
     update.message.reply_text(
         "Хотите узнать о культуре и внерабочей жизни?",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     
-    return OFFICE_INFO  # Переход к состоянию, ожидающему текстового сообщения
-
-def handle_feedback_message(update: Update, context: CallbackContext) -> int:
-    """Обработка сообщения обратной связи от пользователя."""
-    if 'waiting_for_feedback' in context.user_data and context.user_data['waiting_for_feedback']:
-        feedback_message = update.message.text
-        
-        # Отправка сообщения в указанный канал
-        target_channel_id = '@fvdkngwerokl'  # Замените на нужный ID или юзернейм канала
-        context.bot.send_message(chat_id=target_channel_id, text=feedback_message)
-        
-        update.message.reply_text("Ваше сообщение отправлено!")
-        
-        # Завершение ожидания сообщения
-        context.user_data['waiting_for_feedback'] = False
-        
-        return CULTURE_INFO  # Переход к следующему шагу
+    return CULTURE_INFO  # Переход к состоянию, ожидающему нажатия кнопки "Далее"
 
 def handle_culture_info(update: Update, context: CallbackContext) -> int:
     """Обработка нажатия кнопки "Далее" для перехода на шаг 9."""
@@ -467,39 +451,43 @@ def restart(update: Update, context: CallbackContext) -> int:
 
 def main() -> None:
     """Запуск бота."""
+    # Создание Updater и передача ему токена бота
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("Токен бота не найден в переменных окружения")
         return
     
-    application = Application.builder().token(token).build()
+    updater = Updater(token)
+    
+    # Получение диспетчера для регистрации обработчиков
+    dispatcher = updater.dispatcher
     
     # Создание обработчика диалога
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            START: [MessageHandler(filters.Regex('^(Да, поехали|Хочу позже)$'), handle_start_choice)],
-            COMPANY_INFO: [MessageHandler(filters.Regex('^(История|Клиенты|Команда|Далее)$'), handle_company_info)],
-            REGULATIONS_INFO: [MessageHandler(filters.Regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Далее)$'), handle_regulations_info)],
-            ONBOARDING_INFO: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_onboarding_response)],
-            TOOLS_INFO: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_tools_response)],
-            LINKS_INFO: [MessageHandler(filters.Regex('^.*$'), handle_links_response)],
-            CULTURE_INFO: [MessageHandler(filters.Regex('^.*$'), handle_culture_info)],
-            GAMIFICATION: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_gamification_response)],
-            QUIZ: [MessageHandler(filters.Regex('^.*$'), handle_quiz_response)],
-            OFFICE_INFO: [MessageHandler(filters.Regex('^.*$'), handle_feedback_message)],
+            START: [MessageHandler(Filters.regex('^(Да, поехали|Хочу позже)$'), handle_start_choice)],
+            COMPANY_INFO: [MessageHandler(Filters.regex('^(История|Клиенты|Команда|Далее)$'), handle_company_info)],
+            REGULATIONS_INFO: [MessageHandler(Filters.regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Далее)$'), handle_regulations_info)],
+            ONBOARDING_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_onboarding_response)],  # Новое состояние для обработки ответа
+            TOOLS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'),handle_tools_response )],  # Обработка ответа на вопрос о ссылках
+            LINKS_INFO: [MessageHandler(Filters.regex('^.*$'),handle_links_response )],  # Обработка шага 7
+            CULTURE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_culture_info)],  # Обработка шага 9
+            GAMIFICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_gamification_response)],  # Обработка шага 10
+            QUIZ: [MessageHandler(Filters.regex('^.*$'), handle_quiz_response)],  # Обработка ответа на вопрос квиза
         },
         fallbacks=[CommandHandler('start', start)],
     )
     
     # Добавление обработчика диалога
-    application.add_handler(conv_handler)
+    dispatcher.add_handler(conv_handler)
     
     # Обработчик для перезапуска бота
-    application.add_handler(MessageHandler(filters.Regex('^Перезапустить бота$'), restart))
+    dispatcher.add_handler(MessageHandler(Filters.regex('^Перезапустить бота$'), restart))
     
     # Запуск бота
-    application.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main() 
