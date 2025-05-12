@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext, ConversationHandler, Application
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -467,44 +467,39 @@ def restart(update: Update, context: CallbackContext) -> int:
 
 def main() -> None:
     """Запуск бота."""
-    # Создание Updater и передача ему токена бота
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("Токен бота не найден в переменных окружения")
         return
     
-    updater = Updater(token)
-    
-    # Получение диспетчера для регистрации обработчиков
-    dispatcher = updater.dispatcher
+    application = Application.builder().token(token).build()
     
     # Создание обработчика диалога
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            START: [MessageHandler(Filters.regex('^(Да, поехали|Хочу позже)$'), handle_start_choice)],
-            COMPANY_INFO: [MessageHandler(Filters.regex('^(История|Клиенты|Команда|Далее)$'), handle_company_info)],
-            REGULATIONS_INFO: [MessageHandler(Filters.regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Далее)$'), handle_regulations_info)],
-            ONBOARDING_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_onboarding_response)],  # Новое состояние для обработки ответа
-            TOOLS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'),handle_tools_response )],  # Обработка ответа на вопрос о ссылках
-            LINKS_INFO: [MessageHandler(Filters.regex('^.*$'),handle_links_response )],  # Обработка шага 7
-            CULTURE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_culture_info)],  # Обработка шага 9
-            GAMIFICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_gamification_response)],  # Обработка шага 10
-            QUIZ: [MessageHandler(Filters.regex('^.*$'), handle_quiz_response)],  # Обработка ответа на вопрос квиза
-            OFFICE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_feedback_message)],  # Обработка сообщения обратной связи
+            START: [MessageHandler(filters.Regex('^(Да, поехали|Хочу позже)$'), handle_start_choice)],
+            COMPANY_INFO: [MessageHandler(filters.Regex('^(История|Клиенты|Команда|Далее)$'), handle_company_info)],
+            REGULATIONS_INFO: [MessageHandler(filters.Regex('^(Рабочее время|Отпуска и больничные|Как подать заявку|Далее)$'), handle_regulations_info)],
+            ONBOARDING_INFO: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_onboarding_response)],
+            TOOLS_INFO: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_tools_response)],
+            LINKS_INFO: [MessageHandler(filters.Regex('^.*$'), handle_links_response)],
+            CULTURE_INFO: [MessageHandler(filters.Regex('^.*$'), handle_culture_info)],
+            GAMIFICATION: [MessageHandler(filters.Regex('^(Да|Нет)$'), handle_gamification_response)],
+            QUIZ: [MessageHandler(filters.Regex('^.*$'), handle_quiz_response)],
+            OFFICE_INFO: [MessageHandler(filters.Regex('^.*$'), handle_feedback_message)],
         },
         fallbacks=[CommandHandler('start', start)],
     )
     
     # Добавление обработчика диалога
-    dispatcher.add_handler(conv_handler)
+    application.add_handler(conv_handler)
     
     # Обработчик для перезапуска бота
-    dispatcher.add_handler(MessageHandler(Filters.regex('^Перезапустить бота$'), restart))
+    application.add_handler(MessageHandler(filters.Regex('^Перезапустить бота$'), restart))
     
     # Запуск бота
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == '__main__':
     main() 
