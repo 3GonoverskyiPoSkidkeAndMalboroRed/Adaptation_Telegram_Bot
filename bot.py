@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Состояния диалога
-START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_INFO, TOOLS_SETUP, CHANNELS_INFO, FEEDBACK_SUPPORT, CULTURE_INFO, GAMIFICATION, CULTURE_LIFE, LINKS_INFO, QUIZ = range(19)
+START, COMPANY_INFO, ONBOARDING_INFO, OFFICE_INFO, WORK_INFO, FINANCE_INFO, PROJECT_INFO, EXTRA_INFO, FEEDBACK, REGULATIONS_INFO, TOOLS_INFO, TOOLS_SETUP, CHANNELS_INFO, FEEDBACK_SUPPORT, CULTURE_INFO, GAMIFICATION, OFFICE_INFO,CULTURE_LIFE, LINKS_INFO, QUIZ = range(20)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Начало диалога и отправка первого сообщения."""
@@ -292,17 +292,37 @@ def handle_step_seven(update: Update, context: CallbackContext) -> int:
         "Шаг 7. Обратная связь и поддержка: \n"
         "Чувствуешь, что что-то непонятно? Не беда — вот куда можно обратиться: \n"
         "Тимлил Ирина — {tg тимлида} \n"
-        "Твой руководитель Павел  — {tg руководителя}"
+        "Твой руководитель Павел  — {tg руководителя}\n"
+        "Если у тебя есть сообщение, которое ты хочешь отправить, напиши его ниже."
     )
     
-    # Добавление кнопки "Далее" для перехода на шаг 9
+    # Сохраняем состояние для ожидания сообщения
+    context.user_data['waiting_for_feedback'] = True
+    
+    # Добавление кнопки "Далее"
     reply_keyboard = [['Далее']]
     update.message.reply_text(
         "Хотите узнать о культуре и внерабочей жизни?",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     
-    return CULTURE_INFO  # Переход к состоянию, ожидающему нажатия кнопки "Далее"
+    return OFFICE_INFO  # Переход к состоянию, ожидающему текстового сообщения
+
+def handle_feedback_message(update: Update, context: CallbackContext) -> int:
+    """Обработка сообщения обратной связи от пользователя."""
+    if 'waiting_for_feedback' in context.user_data and context.user_data['waiting_for_feedback']:
+        feedback_message = update.message.text
+        
+        # Отправка сообщения в указанный канал
+        target_channel_id = '@fvdkngwerokl'  # Замените на нужный ID или юзернейм канала
+        context.bot.send_message(chat_id=target_channel_id, text=feedback_message)
+        
+        update.message.reply_text("Ваше сообщение отправлено!")
+        
+        # Завершение ожидания сообщения
+        context.user_data['waiting_for_feedback'] = False
+        
+        return CULTURE_INFO  # Переход к следующему шагу
 
 def handle_culture_info(update: Update, context: CallbackContext) -> int:
     """Обработка нажатия кнопки "Далее" для перехода на шаг 9."""
@@ -465,6 +485,7 @@ def main() -> None:
             TOOLS_INFO: [MessageHandler(Filters.regex('^(Да|Нет)$'),handle_tools_response )],  # Обработка ответа на вопрос о ссылках
             LINKS_INFO: [MessageHandler(Filters.regex('^.*$'),handle_links_response )],  # Обработка шага 7
             CULTURE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_culture_info)],  # Обработка шага 9
+            OFFICE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_feedback_message)],
             GAMIFICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_gamification_response)],  # Обработка шага 10
             QUIZ: [MessageHandler(Filters.regex('^.*$'), handle_quiz_response)],  # Обработка ответа на вопрос квиза
         },
