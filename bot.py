@@ -142,11 +142,7 @@ def handle_company_info(update: Update, context: CallbackContext) -> int:
     # Возврат к выбору информации о компании
     reply_keyboard = [['История', 'Клиенты'], ['Команда', 'Далее']]
     update.message.reply_text(
-        "Хочешь узнать:\n"
-        "1. Историю компании\n"
-        "2. Кто наши клиенты\n"
-        "3. Команду\n"
-        "4. Далее",
+        "Выберите интересующий вас раздел:",
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard=True, resize_keyboard=True
         ),
@@ -300,17 +296,37 @@ def handle_step_seven(update: Update, context: CallbackContext) -> int:
         "Шаг 7. Обратная связь и поддержка: \n"
         "Чувствуешь, что что-то непонятно? Не беда — вот куда можно обратиться: \n"
         "Тимлил Ирина — {tg тимлида} \n"
-        "Твой руководитель Павел  — {tg руководителя}"
+        "Твой руководитель Павел  — {tg руководителя}\n"
+        "Если у тебя есть сообщение, которое ты хочешь отправить, напиши его ниже."
     )
     
-    # Добавление кнопки "Далее" для перехода на шаг 9
+    # Сохраняем состояние для ожидания сообщения
+    context.user_data['waiting_for_feedback'] = True
+    
+    # Добавление кнопки "Далее"
     reply_keyboard = [['Далее']]
     update.message.reply_text(
         "Хотите узнать о культуре и внерабочей жизни?",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     
-    return CULTURE_INFO  # Переход к состоянию, ожидающему нажатия кнопки "Далее"
+    return OFFICE_INFO  # Переход к состоянию, ожидающему текстового сообщения
+
+def handle_feedback_message(update: Update, context: CallbackContext) -> int:
+    """Обработка сообщения обратной связи от пользователя."""
+    if 'waiting_for_feedback' in context.user_data and context.user_data['waiting_for_feedback']:
+        feedback_message = update.message.text
+        
+        # Отправка сообщения в указанный канал
+        target_channel_id = '@fvdkngwerokl'  # Замените на нужный ID или юзернейм канала
+        context.bot.send_message(chat_id=target_channel_id, text=feedback_message)
+        
+        update.message.reply_text("Ваше сообщение отправлено!")
+        
+        # Завершение ожидания сообщения
+        context.user_data['waiting_for_feedback'] = False
+        
+        return CULTURE_INFO  # Переход к следующему шагу
 
 def handle_culture_info(update: Update, context: CallbackContext) -> int:
     """Обработка нажатия кнопки "Далее" для перехода на шаг 9."""
@@ -475,6 +491,7 @@ def main() -> None:
             CULTURE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_culture_info)],  # Обработка шага 9
             GAMIFICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), handle_gamification_response)],  # Обработка шага 10
             QUIZ: [MessageHandler(Filters.regex('^.*$'), handle_quiz_response)],  # Обработка ответа на вопрос квиза
+            OFFICE_INFO: [MessageHandler(Filters.regex('^.*$'), handle_feedback_message)],  # Обработка сообщения обратной связи
         },
         fallbacks=[CommandHandler('start', start)],
     )
